@@ -1,0 +1,4 @@
+{
+	"pool-limit" : 3,
+	"queue-limit" : 8
+}

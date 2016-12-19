@@ -1,0 +1,6 @@
+{
+	"slave" : "PingPongNative",
+	"environment" : {
+		"TEST1" : "some valuable info here"
+	}
+}
