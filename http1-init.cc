@@ -14,7 +14,8 @@ using namespace cocaine::framework;
 using namespace cocaine::framework::worker;
 
 namespace {
-  constexpr auto appName = "PingPong";
+  const auto APP_NAME = "PingPong";
+  const auto VAR_NAME = "TEST1";
 }
 
 int main(int argc, char** argv) {
@@ -22,12 +23,13 @@ int main(int argc, char** argv) {
     //using namespace std::chrono_literals;
     using namespace std;
 
+    const auto var1 = getenv(VAR_NAME);
 
-    const auto var1 = getenv("TEST1");
+    cout << "init var " << VAR_NAME << " => " << var1 << '\n'; 
 
     worker_t worker(options_t(argc, argv));
 
-    auto trace = trace_t::generate( string(appName).append("::main") );
+    auto trace = trace_t::generate( string(APP_NAME).append("::main") );
     trace_t::restore_scope_t scope(trace);
 
     //
