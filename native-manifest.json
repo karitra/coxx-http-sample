@@ -1,5 +1,5 @@
 {
-	"slave" : "PingPongNative",
+	"slave" : "http-sample1",
 	"environment" : {
 		"TEST1" : "some valuable info here"
 	}
