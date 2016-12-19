@@ -1,5 +1,6 @@
 #include <iostream>
 #include <chrono>
+#include <exception>
 #include <thread>
 #include <vector>
 
@@ -67,7 +68,7 @@ namespace {
     	auto rx = std::move(channel.rx);
 
 			return tx.send<scope::chunk>("100500")
-        .then(trace_t::bind(&on_send, std::placeholders::_1, rx))
+        .then(trace_t::bind(&on_send,  std::placeholders::_1, rx))
         .then(trace_t::bind(&on_chunk, std::placeholders::_1, rx))
         .then(trace_t::bind(&on_choke, std::placeholders::_1));
 			}
@@ -101,7 +102,7 @@ int main(int argc, char *argv[]) {
 			cout << "connecting to [" << srvName << "] ...\n";
 			echo.connect().get();
 
-			cout << "sending " << tries << " pings...\n";
+			cout << "sending " << tries << " ping(s)...\n";
 			std::vector<task<void>::future_type> futs;
 			futs.reserve(tries);
 
@@ -116,8 +117,12 @@ int main(int argc, char *argv[]) {
 
 			std::this_thread::sleep_for ( chrono::seconds(1) );
 
+			for(const auto &f : futs) {
+					f.wait();
+			}
+
 		} catch(const std::exception &e) {
-			std::cerr << "Something went wrong: " << e.what() << '\n';
+			cerr << "Something went wrong: " << e.what() << '\n';
 			return EXIT_FAILURE;
 		}
 
