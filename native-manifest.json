@@ -1,5 +1,5 @@
 {
-	"slave" : "http-sample1",
+	"slave" : "http-native1",
 	"environment" : {
 		"TEST1" : "some valuable info here"
 	}
