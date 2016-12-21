@@ -144,7 +144,9 @@ namespace {
     struct logger_wrapper_t {
         logger_wrapper_t(LogRef &l, const std::string &app) : logger(l), appName(app) {}
 
-        void info(const string &str) { logger.template invoke<io::log::emit>( logging::info ,appName, str).get(); }
+        void info(const string &str) {
+          logger.template invoke<io::log::emit>( logging::info ,appName, str).get();
+        }
 
       private:
         LogRef &logger;
@@ -183,6 +185,12 @@ int main(int argc, char** argv) {
 
     logg.info("service ready");
 
+    {
+      ostringstream os;
+      os << "init var " << VAR_NAME << " => " << var1;
+      logg.info( os.str() );
+    }
+
 #if 1
     //
     // Entry web point
@@ -197,7 +205,6 @@ int main(int argc, char** argv) {
 
         logg.info("on web request");
 
-        // TODO: logging
         // std::this_thread::sleep_for(delta);
 
         tx.send(std::move(rs)).get()
@@ -205,13 +212,46 @@ int main(int argc, char** argv) {
 
         logg.info("web request done");
     });
-
 #endif
 
     const auto pingNamePStr = METHS_NAMES[PINGNameId];
     const auto pongNamePStr = METHS_NAMES[PONGNameId];
 
+    logg.info("creating clients service manager...");
     service_manager_t manager(cli::HWInfo::GetCpusCount());
+
+    auto storage    = manager.create<cocaine::io::app_tag>("storage");
+
+    worker.on( "getfile", [&logg, &storage] (worker::sender tx, worker::receiver rx) {
+        auto key = rx.recv().get();
+        if (key) {
+
+          {
+            ostringstream os;
+            os << "got storage request key = " << *key;
+            logg.info(os.str());
+          }
+
+          auto ch = storage.invoke<io::app::enqueue>("store", *key).get();
+          auto something = ch.rx.recv().get();
+
+          {
+            ostringstream os;
+            os << "got from storage ";
+            if (something) {
+              os << *something;
+              tx.write(*something).get();
+            } else {
+              os << "n/a";
+            }
+
+            logg.info( os.str() );
+          }
+
+        } else {
+          logg.info("no key at all");
+        }
+    });
 
     worker.on( pingNamePStr , [&manager, &logg, pingNamePStr, pongNamePStr] (worker::sender tx, worker::receiver rx) {
         call_sentry_logger_t<decltype(logg)> cs(logg, pingNamePStr, "init", "done");
@@ -234,6 +274,23 @@ int main(int argc, char** argv) {
 
           tx.write("done").get();
         }
+    });
+
+    worker.on("meta", [&logg](worker::sender tx, worker::receiver rx) {
+        call_sentry_logger_t<decltype(logg)> cs(logg, "test", "init", "done");
+
+        logg.info("meta request");
+
+        // std::cout << "After invoke. Headers count: "
+        //           << rx.invocation_headers().get_headers().size() << std::endl;
+
+        if (auto frame = rx.recv<worker::frame_t>().get()) {
+                std::cout << "After chunk: '" << frame->data << "'" << std::endl;
+                tx.write(frame->data).get();
+                std::cout << "After write" << std::endl;
+        }
+
+        std::cout << "After close" << std::endl;
     });
 
     return worker.run();

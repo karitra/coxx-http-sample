@@ -5,6 +5,8 @@
 #include <cocaine/idl/node.hpp>
 #include <cocaine/traits/error_code.hpp>
 
+#include <cocaine/hpack/static_table.hpp>
+
 namespace {
 
 		namespace cli {
@@ -80,7 +82,6 @@ namespace {
 					return tx.send<scope::chunk>(msg)
 		        .then(trace_t::bind(&on_send, std::placeholders::_1, rx));
 				}
-
 
 		} // ns::app
 }
