@@ -1,0 +1,11 @@
+{
+	"pool-limit" : 3,
+	"queue-limit" : 8,
+	"isolate": {
+		 "args": {
+			 "spool": "/var/spool/cocaine"
+		 },
+		 "type": "legacy_process"
+ }
+}
+
