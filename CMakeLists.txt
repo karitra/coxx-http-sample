@@ -22,3 +22,4 @@ endif()
 include(CPack)
 set(CPACK_GENERATOR "ZIP")
 set(CPACK_PACKEGE_NAME "coxx-native-test")
+

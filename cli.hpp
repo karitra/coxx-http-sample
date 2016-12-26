@@ -4,7 +4,10 @@
 
 #include <cocaine/framework/service.hpp>
 #include <cocaine/framework/manager.hpp>
+
 #include <cocaine/idl/node.hpp>
+#include <cocaine/idl/locator.hpp>
+
 #include <cocaine/traits/error_code.hpp>
 
 #include <cocaine/hpack/static_table.hpp>

@@ -6,6 +6,8 @@ namespace PPNConfig {
 	const unsigned HW_CPU_DEF = 2;
 
 	const auto CLI_MATHOD_DEF = "ping";
+
+	const auto DEFAULT_RT_PORT = unsigned{50053};
 } // ns::
 
 #endif

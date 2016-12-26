@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from __future__ import with_statement
+
 import msgpack, pprint, sys
 
 from cocaine.services import Service
@@ -7,9 +9,15 @@ from cocaine.services import Service
 from tornado.gen import coroutine
 from tornado.ioloop import IOLoop
 
-service = Service('Echo', (( open("endpoints.list").read().strip(),10053), ) )
-storage = Service('storage')
-locator = Service('locator')
+def readEndpoint(fname):
+    with open(fname) as f:
+        return f.read().strip()
+
+remote1 = ((  readEndpoint("endpoints.list") ,  10053), )
+
+service = Service('Echo', remote1 )
+storage = Service('storage', remote1 )
+locator = Service('locator', remote1 )
 
 @coroutine
 def direct_storage_get(ns,key):
@@ -60,10 +68,12 @@ def getfile(ns,name):
 @coroutine
 def locate(srvName):
 
+    print("locating service: {}".format(srvName) )
+
     ch  = yield locator.resolve(srvName)
     loc = yield ch.rx.get()
 
-    print(str(loc))
+    # print(str(loc))
     pprint.pprint(loc)
 
 if __name__ == '__main__':

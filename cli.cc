@@ -1,6 +1,8 @@
 #include <iostream>
 #include <chrono>
+#include <fstream>
 #include <exception>
+#include <sstream>
 #include <thread>
 #include <vector>
 
@@ -13,6 +15,7 @@
 
 #include <boost/range/irange.hpp>
 #include <boost/lexical_cast.hpp>
+// #include <boost/asio/ip/tcp.hpp>
 
 #include "config.hpp"
 #include "cli.hpp"
@@ -23,6 +26,15 @@ using namespace cocaine::framework;
 namespace {
 	const int TRIES_DEF = 4;
 	const int COUNTER_DEF = 7;
+
+	typedef boost::asio::ip::tcp::endpoint endpoint_t;
+
+	std::string slurp(std::ifstream &&is) {
+			std::ostringstream os;
+			os << is.rdbuf();
+			return os.str();
+	}
+
 } // ns::
 
 int main(int argc, char *argv[]) {
@@ -59,13 +71,23 @@ int main(int argc, char *argv[]) {
 
 	cout << "initializing service manager\n";
 
-	service_manager_t manager(cli::HWInfo::GetCpusCount());
+	std::vector<endpoint_t> v;
+	v.emplace_back(
+			boost::asio::ip::address::from_string( slurp( std::move(ifstream("endpoints.list")) ) ),
+      PPNConfig::DEFAULT_RT_PORT );
+
+	service_manager_t manager( move(v), cli::HWInfo::GetCpusCount());
+
 	auto echo = manager.create<cocaine::io::app_tag>(srvName);
+	auto locator = manager.create<cocaine::io::locator_tag>("locator");
 
 	trace_t trace = trace_t::generate("cli::main");
 	trace_t::restore_scope_t scope(trace);
 
 	try {
+
+		  cout << "requesing info from locator @ " << srvName << '\n';
+			// auto r = locator.invoke<cocaine::io::locator::resolve>(event);
 
 			cout << "connecting to [" << srvName << "] ...\n";
 			echo.connect().get();
@@ -94,11 +116,12 @@ int main(int argc, char *argv[]) {
 				obuff.seekg(0);
 
 				msg = obuff.str();
-				cout << "packed message " << msg << '\n';
+				// cout << "packed message " << msg << '\n';
 			}
 
 			for(const auto &i : boost::irange(0, tries)) {
-				cout << "invoking request num. " << i << " for method " << event << " with message " << msg << '\n';
+				cout << "invoking request num. " << i << " for method " << event << '\n';
+				 			// << " with message " << msg << '\n';
 
 				futs.emplace_back(
 					echo.invoke<cocaine::io::app::enqueue>(event)

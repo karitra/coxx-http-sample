@@ -9,8 +9,6 @@
 #include <blackhole/attribute.hpp>
 #include <blackhole/extensions/writer.hpp>
 
-#include <cocaine/idl/node.hpp>
-
 #include <cocaine/framework/worker.hpp>
 #include <cocaine/framework/worker/http.hpp>
 #include <cocaine/framework/trace.hpp>
@@ -23,6 +21,10 @@
 #include <cocaine/traits/enum.hpp>
 #include <cocaine/traits/tuple.hpp>
 #include <cocaine/traits/vector.hpp>
+
+#include <cocaine/idl/node.hpp>
+#include <cocaine/idl/storage.hpp>
+#include <cocaine/idl/logging.hpp>
 
 #include <msgpack.hpp>
 
@@ -232,9 +234,10 @@ int main(int argc, char** argv) {
     logg.info("creating clients service manager...");
     service_manager_t manager(cli::HWInfo::GetCpusCount());
 
-    auto storage    = manager.create<cocaine::io::app_tag>("storage");
+    auto storage    = manager.create<cocaine::io::storage_tag>("storage");
+    auto logging    = manager.create<cocaine::io::log_tag>("logging");
 
-    worker.on( "getfile", [&logg, &storage] (worker::sender tx, worker::receiver rx) {
+    worker.on( "getfile", [&logg, &storage, &logging, &appName] (worker::sender tx, worker::receiver rx) {
 
         auto msg = rx.recv().get();
 
@@ -278,18 +281,21 @@ int main(int argc, char** argv) {
               logg.info(os.str());
             }
 
-            auto ch = storage.invoke<io::app::enqueue>(ns, key).get();
-            auto something = ch.rx.recv().get();
+            // auto ch = storage.invoke<io::app::enqueue>(ns, key).get();
+            // auto something = ch.rx.recv().get();
+
+            auto something = storage.invoke<io::storage::read>(ns, key).get();
 
             {
               ostringstream os;
-              os << "got from storage ";
-              if (something) {
-                os << *something;
-                tx.write(*something).get();
-              } else {
-                os << "n/a";
-              }
+              os << "logger: got from storage " << something;
+              logging.invoke<io::log::emit>(logging::info, appName, os.str() ).get();
+            }
+
+            {
+              ostringstream os;
+              os << "got from storage " << something;
+              tx.write(something).get();
 
               logg.info( os.str() );
             }
