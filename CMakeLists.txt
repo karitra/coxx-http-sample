@@ -4,12 +4,13 @@ project(NativeSample1)
 
 set(CMAKE_CXX_FLAGS "--std=gnu++11 -O2 ${CMAKE_CXX_FLAGS}")
 set(PROJECT http-native1)
+set(PROJECT_LIBS cocaine-framework-native cocaine-io-util blackhole msgpack)
 
 add_executable(${PROJECT} http1-init.cc)
-target_link_libraries(${PROJECT} cocaine-framework-native cocaine-io-util blackhole)
+target_link_libraries(${PROJECT} ${PROJECT_LIBS})
 
 add_executable(cli cli.cc)
-target_link_libraries(cli cocaine-framework-native cocaine-io-util blackhole)
+target_link_libraries(cli ${PROJECT_LIBS})
 
 find_package(Boost REQUIRED COMPONENTS system)
 if(Boost_FOUND)

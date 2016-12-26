@@ -9,6 +9,8 @@
 // not in boost 1.54
 // #include <boost/program_options/postitional_options.hpp>
 
+#include <msgpack.hpp>
+
 #include <boost/range/irange.hpp>
 #include <boost/lexical_cast.hpp>
 
@@ -72,12 +74,35 @@ int main(int argc, char *argv[]) {
 			std::vector<task<void>::future_type> futs;
 			futs.reserve(tries);
 
+			auto msg = cntStr;
+
+			if (event == string("getfile")) {
+
+				auto ns  = string{"store"};
+				auto key = string{"test.txt"};
+
+				auto pos = cntStr.find('/');
+				if (pos != string::npos) {
+					ns  = cntStr.substr(0,pos);
+					key = cntStr.substr(pos+1);
+				}
+
+				std::stringstream obuff;
+				msgpack::type::tuple<string,string> src(ns,key);
+				msgpack::pack(obuff, src);
+
+				obuff.seekg(0);
+
+				msg = obuff.str();
+				cout << "packed message " << msg << '\n';
+			}
+
 			for(const auto &i : boost::irange(0, tries)) {
-				cout << "invoking request num. " << i << " for method " << event << '\n';
+				cout << "invoking request num. " << i << " for method " << event << " with message " << msg << '\n';
 
 				futs.emplace_back(
 					echo.invoke<cocaine::io::app::enqueue>(event)
-						.then( trace_t::bind(&::cli::on_invoke, std::placeholders::_1, cntStr) )
+						.then( trace_t::bind(&::cli::on_invoke, std::placeholders::_1, msg) )
 				);
 			}
 

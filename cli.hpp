@@ -1,5 +1,7 @@
 #ifndef __INCL_CLI__
 
+#include <msgpack.hpp>
+
 #include <cocaine/framework/service.hpp>
 #include <cocaine/framework/manager.hpp>
 #include <cocaine/idl/node.hpp>

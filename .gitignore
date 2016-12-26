@@ -1,2 +1,5 @@
 build/
-*.swp
+tests/**/a.out
+**/build.log
+**/*.swp
+endpoints.list

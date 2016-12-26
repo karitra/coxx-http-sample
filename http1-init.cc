@@ -1,6 +1,8 @@
+#include <exception>
 #include <thread>
 #include <iostream>
 #include <chrono>
+#include <tuple>
 
 #include <cstdlib>
 
@@ -22,7 +24,7 @@
 #include <cocaine/traits/tuple.hpp>
 #include <cocaine/traits/vector.hpp>
 
-
+#include <msgpack.hpp>
 
 // #include <cocaine/framework/detail/log.hpp>
 
@@ -65,7 +67,7 @@ namespace {
       if (auto msg = rx.recv().get()) {
 
           ostringstream os;
-          os << "get request for method: '" << *msg << "'\n";
+          os << "get request for method: '" << *msg;
           logg.info(os.str());
 
           const auto cnt = boost::lexical_cast<unsigned>(*msg);
@@ -81,16 +83,26 @@ namespace {
 
             ppnSrv.connect().get();
 
-            auto res = ppnSrv.template invoke<io::app::enqueue>(name)
-                .then( trace_t::bind(&::cli::on_invoke_from_srv, std::placeholders::_1, boost::lexical_cast<string>(cnt - 1) ) );
+            try {
 
-            const auto v = res.get();
+              auto res = ppnSrv.template invoke<io::app::enqueue>(name)
+                  .then( trace_t::bind(&::cli::on_invoke_from_srv, std::placeholders::_1, boost::lexical_cast<string>(cnt - 1) ) );
+              const auto v = res.get();
 
-            {
+              {
+                ostringstream os;
+                os << "get response from method " << name << " call: " << v;
+                logg.info(os.str());
+              }
+
+            } catch (const std::exception &e) {
+
               ostringstream os;
-              os << "get response from method " << name << " call: " << v;
+              os << "get except: " << e.what();
               logg.info(os.str());
+
             }
+
 
           } else {
 
@@ -223,31 +235,70 @@ int main(int argc, char** argv) {
     auto storage    = manager.create<cocaine::io::app_tag>("storage");
 
     worker.on( "getfile", [&logg, &storage] (worker::sender tx, worker::receiver rx) {
-        auto key = rx.recv().get();
-        if (key) {
+
+        auto msg = rx.recv().get();
+
+        if (msg) {
+
+          logg.info("getfile method...");
+
+          auto m = *msg;
+
+          // auto off = size_t{};
 
           {
             ostringstream os;
-            os << "got storage request key = " << *key;
+            os << "getfile message " << m;
             logg.info(os.str());
           }
 
-          auto ch = storage.invoke<io::app::enqueue>("store", *key).get();
-          auto something = ch.rx.recv().get();
+          msgpack::unpacked obj;
+          msgpack::unpack( &obj, m.data(), m.size() );
+          msgpack::object o = obj.get();
 
           {
             ostringstream os;
-            os << "got from storage ";
-            if (something) {
-              os << *something;
-              tx.write(*something).get();
-            } else {
-              os << "n/a";
-            }
-
-            logg.info( os.str() );
+            os << "getfile message object " << o;
+            logg.info(os.str());
           }
 
+          try {
+
+            logg.info("getfile casting message...");
+            const auto t = o.as< std::tuple<std::string, std::string> >();
+
+            logg.info("getfile accessing unpacked message...");
+
+            const auto key = std::get<1>(t);
+            const auto ns  = std::get<0>(t);
+
+            {
+              ostringstream os;
+              os << "getfile got storage request from ns = " << ns << " key = " << key;
+              logg.info(os.str());
+            }
+
+            auto ch = storage.invoke<io::app::enqueue>(ns, key).get();
+            auto something = ch.rx.recv().get();
+
+            {
+              ostringstream os;
+              os << "got from storage ";
+              if (something) {
+                os << *something;
+                tx.write(*something).get();
+              } else {
+                os << "n/a";
+              }
+
+              logg.info( os.str() );
+            }
+
+          } catch (const std::exception &e) {
+            ostringstream os;
+            os << "getfile exception: " << e.what();
+            logg.info(os.str());
+          }
         } else {
           logg.info("no key at all");
         }

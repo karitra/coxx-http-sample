@@ -35,7 +35,7 @@ def http_getfile(req,resp):
     # ns, key = msgpack.unpackb(msg, use_list=False)
 
     args = req.request
-    
+
     ns  = args['ns'] if args.has_key('ns') else 'store'
     key = args['key'] if args.has_key('key') else 'test.txt'
 
@@ -47,9 +47,11 @@ def http_getfile(req,resp):
         data = yield ch.rx.get()
 
     except Exception as err:
+
         log.error("error in http " + str(err) )
         resp.write_head(502, {})
         resp.write(str(err))
+
     else:
         log.info("sending response")
         resp.write_head(200, {})
