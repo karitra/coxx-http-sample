@@ -16,9 +16,17 @@
 #include <boost/range/irange.hpp>
 #include <boost/lexical_cast.hpp>
 // #include <boost/asio/ip/tcp.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include "config.hpp"
 #include "cli.hpp"
+
+#include <cocaine/traits/attributes.hpp>
+#include <cocaine/traits/enum.hpp>
+#include <cocaine/traits/tuple.hpp>
+#include <cocaine/traits/vector.hpp>
+#include <cocaine/traits/endpoint.hpp>
+#include <cocaine/traits/graph.hpp>
 
 using namespace cocaine;
 using namespace cocaine::framework;
@@ -71,34 +79,47 @@ int main(int argc, char *argv[]) {
 
 	cout << "initializing service manager\n";
 
+#if 1
+	auto point = slurp( std::move(ifstream("../endpoints.list") ) );
+	boost::trim(point);
+	cout << "endpoints: ( [" << point << "], "
+			<< PPNConfig::DEFAULT_RT_PORT << " )\n";
+
 	std::vector<endpoint_t> v;
 	v.emplace_back(
-			boost::asio::ip::address::from_string( slurp( std::move(ifstream("endpoints.list")) ) ),
+			boost::asio::ip::address::from_string(point),
       PPNConfig::DEFAULT_RT_PORT );
 
 	service_manager_t manager( move(v), cli::HWInfo::GetCpusCount());
+#else
+	service_manager_t manager( cli::HWInfo::GetCpusCount());
+#endif
+
+	cout << "creating link to app [" << srvName << "]\n";
 
 	auto echo = manager.create<cocaine::io::app_tag>(srvName);
 	auto locator = manager.create<cocaine::io::locator_tag>("locator");
+	auto logger = manager.create<cocaine::io::log_tag>("logging");
 
 	trace_t trace = trace_t::generate("cli::main");
 	trace_t::restore_scope_t scope(trace);
 
 	try {
 
-		  cout << "requesing info from locator @ " << srvName << '\n';
-			// auto r = locator.invoke<cocaine::io::locator::resolve>(event);
+		  echo.connect().get();
+			locator.connect().get();
+			logger.connect().get();
 
-			cout << "connecting to [" << srvName << "] ...\n";
-			echo.connect().get();
+			logger.invoke<cocaine::io::log::emit>(logging::info, "cli1", "** client online" );
 
 			cout << "sending " << tries << " ping(s)...\n";
+
 			std::vector<task<void>::future_type> futs;
 			futs.reserve(tries);
 
 			auto msg = cntStr;
 
-			if (event == string("getfile")) {
+			if (event == string{"getfile"}) {
 
 				auto ns  = string{"store"};
 				auto key = string{"test.txt"};
@@ -116,7 +137,16 @@ int main(int argc, char *argv[]) {
 				obuff.seekg(0);
 
 				msg = obuff.str();
-				// cout << "packed message " << msg << '\n';
+
+				cout << "packed message " << msg << '\n';
+			} else if (event == string{"locate"}) {
+
+				cout << "requesing info from locator @ " << srvName << '\n';
+				auto r = locator.invoke<cocaine::io::locator::resolve>(event).get();
+
+				
+
+				return EXIT_SUCCESS;
 			}
 
 			for(const auto &i : boost::irange(0, tries)) {

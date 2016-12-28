@@ -7,7 +7,7 @@ namespace PPNConfig {
 
 	const auto CLI_MATHOD_DEF = "ping";
 
-	const auto DEFAULT_RT_PORT = unsigned{50053};
+	const auto DEFAULT_RT_PORT = unsigned{10053};
 } // ns::
 
 #endif

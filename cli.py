@@ -19,6 +19,7 @@ service = Service('Echo', remote1 )
 storage = Service('storage', remote1 )
 locator = Service('locator', remote1 )
 
+
 @coroutine
 def direct_storage_get(ns,key):
 
@@ -68,13 +69,29 @@ def getfile(ns,name):
 @coroutine
 def locate(srvName):
 
+    class StatPrinter:
+        def __init__(self, resDict):
+            self.d = resDict
+
+        def pprint(self, sep='='):
+            for k in self.d:
+                print(k)
+                pprint.pprint(self.d[k])
+                print(sep * 70)
+
+
     print("locating service: {}".format(srvName) )
 
     ch  = yield locator.resolve(srvName)
     loc = yield ch.rx.get()
 
-    # print(str(loc))
-    pprint.pprint(loc)
+    ch = yield locator.cluster(srvName)
+    clust = yield ch.rx.get()
+
+    ch = yield locator.routing(srvName)
+    rt = yield ch.rx.get()
+
+    StatPrinter(dict(locate=loc, cluster=clust, routing=rt)).pprint()
 
 if __name__ == '__main__':
 

@@ -7,6 +7,7 @@
 
 #include <cocaine/idl/node.hpp>
 #include <cocaine/idl/locator.hpp>
+#include <cocaine/idl/logging.hpp>
 
 #include <cocaine/traits/error_code.hpp>
 
