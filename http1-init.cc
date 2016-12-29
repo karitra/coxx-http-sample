@@ -301,9 +301,11 @@ int main(int argc, char** argv) {
             }
 
           } catch (const std::exception &e) {
+
             ostringstream os;
             os << "getfile exception: " << e.what();
             logg.info(os.str());
+
           }
         } else {
           logg.info("no key at all");

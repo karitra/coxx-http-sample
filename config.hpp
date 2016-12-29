@@ -3,6 +3,8 @@
 
 namespace PPNConfig {
 	const auto APP_NAME_DEF = "ppn"; // ppn => PingPingNative
+	const auto DEFAULT_LOCATOR = "locator"; // ppn => PingPingNative
+
 	const unsigned HW_CPU_DEF = 2;
 
 	const auto CLI_MATHOD_DEF = "ping";

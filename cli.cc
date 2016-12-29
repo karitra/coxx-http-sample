@@ -2,6 +2,7 @@
 #include <chrono>
 #include <fstream>
 #include <exception>
+#include <iterator>
 #include <sstream>
 #include <thread>
 #include <vector>
@@ -42,6 +43,48 @@ namespace {
 			os << is.rdbuf();
 			return os.str();
 	}
+
+
+	struct GraphPrinter {
+
+		// GraphPrinter(const graph_root_t &r) : root(r) {}
+
+		void print(std::ostream &os, const cocaine::io::graph_root_t &r) {
+
+			for(const auto &p : r) {
+					const auto &v =  p.second;
+					os << "key: " << p.first << '\n'
+							<< "  name: " << get<0>(v) << '\n';
+
+							const auto &m1 = get<1>(v);
+							const auto &m2 = get<2>(v);
+
+							if (m1) { GraphPrinter::print(os, 2, m1); }
+							if (m2) { GraphPrinter::print(os, 2, m2); }
+			}
+
+		}
+
+
+ 	private:
+
+		template<class GraphNode>
+		static void
+		print(std::ostream &os, const int depth, const GraphNode &gn) {
+
+			std::string tabs(depth, ' ');
+
+			for(const auto &p : gn) {
+				os << tabs << "id: " << p.first << '\n';
+				if (p.second) {
+					print(os, depth << 1, *p.second);
+				}
+			}
+		}
+
+	private:
+		// const graph_root_t &root;
+	};
 
 } // ns::
 
@@ -98,7 +141,8 @@ int main(int argc, char *argv[]) {
 	cout << "creating link to app [" << srvName << "]\n";
 
 	auto echo = manager.create<cocaine::io::app_tag>(srvName);
-	auto locator = manager.create<cocaine::io::locator_tag>("locator");
+
+	auto locator = manager.create<cocaine::io::locator_tag>(PPNConfig::DEFAULT_LOCATOR);
 	auto logger = manager.create<cocaine::io::log_tag>("logging");
 
 	trace_t trace = trace_t::generate("cli::main");
@@ -139,19 +183,30 @@ int main(int argc, char *argv[]) {
 				msg = obuff.str();
 
 				cout << "packed message " << msg << '\n';
+
 			} else if (event == string{"locate"}) {
 
-				cout << "requesing info from locator @ " << srvName << '\n';
-				auto r = locator.invoke<cocaine::io::locator::resolve>(event).get();
+				cout << "requesing info from locator @ " << PPNConfig::DEFAULT_LOCATOR << '\n'
+						 << "\tfor app [" << srvName << "]\n";
 
-				
+				auto t = locator.invoke<cocaine::io::locator::resolve>(srvName).get();
+
+				const auto endPts = std::get<0>(t);
+				const auto ver    = std::get<1>(t);
+				const auto gr     = std::get<2>(t);
+
+				typedef std::remove_reference<decltype(endPts)>::type::value_type TEndpoint;
+
+				cout << "proto version: " << ver << '\n';
+				// cout << "graph: " << gr << '\n';
+
+				copy( begin(endPts), end(endPts), ostream_iterator<TEndpoint>(cout, "\n") );
 
 				return EXIT_SUCCESS;
 			}
 
 			for(const auto &i : boost::irange(0, tries)) {
 				cout << "invoking request num. " << i << " for method " << event << '\n';
-				 			// << " with message " << msg << '\n';
 
 				futs.emplace_back(
 					echo.invoke<cocaine::io::app::enqueue>(event)
@@ -167,6 +222,8 @@ int main(int argc, char *argv[]) {
 
 		} catch(const std::exception &e) {
 			cerr << "Something went wrong: " << e.what() << '\n';
+			logger.invoke<cocaine::io::log::emit>(logging::error, "cli1", e.what() );
+
 			return EXIT_FAILURE;
 		}
 
